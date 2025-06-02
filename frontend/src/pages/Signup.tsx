@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Header from '@/components/Header';
+import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { signup } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,15 +25,45 @@ const Signup = () => {
     companyName: '',
     companyDescription: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Signup attempt:', formData);
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await signup(formData);
+      setSuccess("Signup successful! You can now log in.");
+      setLoading(false);
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+
+    } catch (err) {
+      console.error('Signup error:', err);
+      setLoading(false);
+      setError(err.message || "Signup failed. Please try again.");
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, role: searchParams.get('role') || 'buyer' }));
+  }, [searchParams]);
+
 
   return (
     <div className="min-h-screen">
@@ -195,9 +227,12 @@ const Signup = () => {
                 <span>I agree to the Terms of Service and Privacy Policy</span>
               </div>
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700">
-                Create {formData.role === 'seller' ? 'Seller' : 'Buyer'} Account
-                <ArrowRight className="ml-2 w-4 h-4" />
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {success && <p className="text-green-500 text-sm">{success}</p>}
+
+              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700" disabled={loading}>
+                {loading ? 'Creating Account...' : `Create ${formData.role === 'seller' ? 'Seller' : 'Buyer'} Account`}
+                {!loading && <ArrowRight className="ml-2 w-4 h-4" />}
               </Button>
             </form>
 

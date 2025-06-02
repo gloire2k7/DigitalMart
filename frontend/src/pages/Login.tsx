@@ -1,21 +1,49 @@
-
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Header from '@/components/Header';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
+  const navigate = useNavigate();
+  const { login, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password });
+    setError(null);
+    setLoading(true);
+
+    try {
+      await login({ email, password });
+      // Redirection handled after successful login in the try block
+    } catch (err) {
+      console.error('Login error:', err);
+      setLoading(false);
+      setError(err.message || "Login failed. Please try again.");
+    }
   };
+
+  // Effect to redirect based on user role after login
+  useEffect(() => {
+    if (user) {
+      const userRole = user.roles[0]; // Assuming the first role determines the primary dashboard
+      if (userRole === 'ROLE_BUYER') {
+        navigate('/home'); // Redirect buyers to the home page
+      } else if (userRole === 'ROLE_SELLER') {
+        navigate('/seller/dashboard'); // Redirect sellers to the seller dashboard
+      } else if (userRole === 'ROLE_ADMIN') {
+        navigate('/admin/dashboard'); // Redirect admins to the admin dashboard
+      }
+    }
+  }, [user, navigate]); // Dependency array includes user and navigate
 
   return (
     <div className="min-h-screen">
@@ -78,9 +106,11 @@ const Login = () => {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700">
-                Sign In
-                <ArrowRight className="ml-2 w-4 h-4" />
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
+              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700" disabled={loading}>
+                {loading ? 'Signing In...' : 'Sign In'}
+                {!loading && <ArrowRight className="ml-2 w-4 h-4" />}
               </Button>
             </form>
 
