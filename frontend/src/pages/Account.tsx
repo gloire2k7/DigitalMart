@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { User, Package, Heart, Settings, LogOut, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,14 +6,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Account = () => {
-  const [user] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    avatar: "/placeholder.svg",
-    joinDate: "January 2023"
-  });
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const orders = [
     {
@@ -45,12 +55,12 @@ const Account = () => {
               <Card className="glass border-purple-500/20">
                 <CardContent className="p-6 text-center">
                   <Avatar className="w-24 h-24 mx-auto mb-4">
-                    <AvatarImage src={user.avatar} />
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarImage src={user?.avatar} />
+                    <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
                   </Avatar>
-                  <h2 className="text-xl font-semibold text-white mb-1">{user.name}</h2>
-                  <p className="text-gray-400 mb-2">{user.email}</p>
-                  <p className="text-sm text-gray-500">Member since {user.joinDate}</p>
+                  <h2 className="text-xl font-semibold text-white mb-1">{user?.firstName} {user?.lastName}</h2>
+                  <p className="text-gray-400 mb-2">{user?.email}</p>
+                  <p className="text-sm text-gray-500">Member since {new Date().toLocaleDateString()}</p>
                   <Button variant="outline" size="sm" className="mt-4">
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Profile
@@ -138,11 +148,11 @@ const Account = () => {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
-                          <p className="text-white">{user.name}</p>
+                          <p className="text-white">{user?.firstName} {user?.lastName}</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
-                          <p className="text-white">{user.email}</p>
+                          <p className="text-white">{user?.email}</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
@@ -169,9 +179,14 @@ const Account = () => {
                         <Button variant="outline" className="w-full justify-start">
                           Privacy Settings
                         </Button>
-                        <Button variant="outline" className="w-full justify-start text-red-400 border-red-400/50 hover:bg-red-500/10">
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start text-red-400 border-red-400/50 hover:bg-red-500/10"
+                          onClick={handleLogout}
+                          disabled={isLoggingOut}
+                        >
                           <LogOut className="w-4 h-4 mr-2" />
-                          Sign Out
+                          {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
                         </Button>
                       </div>
                     </CardContent>

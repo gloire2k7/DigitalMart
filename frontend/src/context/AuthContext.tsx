@@ -5,7 +5,7 @@ interface AuthContextType {
   user: any | null;
   login: (formData: any) => Promise<void>;
   signup: (formData: any) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,35 +25,62 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response = await axios.post('http://localhost:8085/api/auth/signin', formData);
       const userData = response.data;
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      console.log('Login successful:', userData);
+      
+      // Store the token separately
+      localStorage.setItem('token', userData.token);
+      
+      // Remove token from user data before storing
+      const { token, ...userWithoutToken } = userData;
+      setUser(userWithoutToken);
+      localStorage.setItem('user', JSON.stringify(userWithoutToken));
+      
+      // Set the default authorization header for all future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      console.log('Login successful:', userWithoutToken);
     } catch (error) {
       console.error('Login error:', error);
-      throw error; // Re-throw to be caught by the component
+      throw error;
     }
   };
 
   const signup = async (formData: any) => {
     try {
-        // Adjust role format for backend
-        const signupData = {
-            ...formData,
-            role: formData.role.toUpperCase(), // Send role as a single uppercase string
-        };
+      // Adjust role format for backend
+      const signupData = {
+        ...formData,
+        role: formData.role.toUpperCase(), // Send role as a single uppercase string
+      };
       const response = await axios.post('http://localhost:8085/api/auth/signup', signupData);
       console.log('Signup successful:', response.data);
-      // Optionally, handle success like showing a message or redirecting
     } catch (error) {
       console.error('Signup error:', error);
-      throw error; // Re-throw to be caught by the component
+      throw error;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    console.log('User logged out');
+  const logout = async () => {
+    try {
+      // Call the backend signout endpoint
+      await axios.post('http://localhost:8085/api/auth/signout');
+      
+      // Clear local state and storage
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      
+      // Clear any auth headers from axios
+      delete axios.defaults.headers.common['Authorization'];
+      
+      console.log('User logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if the backend call fails, we should still clear the local state
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      delete axios.defaults.headers.common['Authorization'];
+    }
   };
 
   return (
